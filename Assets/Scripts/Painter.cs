@@ -1,10 +1,11 @@
 ﻿using UnityEngine;
+using System.Collections.Generic;
 
 public class Painter : MonoBehaviour
 {
 
-    const int TEXTURE_WIDTH = 500;
-    const int TEXTURE_HEIGHT = 500;
+    const int TEXTURE_WIDTH = 100;
+    const int TEXTURE_HEIGHT = 100;
 
     [Tooltip("Target bidang gambar")]
     public MeshRenderer targetRender;
@@ -26,9 +27,12 @@ public class Painter : MonoBehaviour
     {
         Dot,
         Line,
-        Triangle
+        Triangle,
+        Rectangle
     }
     public DrawingMode CurrentDrawingMode = DrawingMode.Dot;
+
+
 
     void Start()
     {
@@ -128,16 +132,11 @@ public class Painter : MonoBehaviour
             switch (this.CurrentDrawingMode)
             {
                 case DrawingMode.Triangle:
-                    tempTargetRender.gameObject.SetActive(true);
-                    if (hit.transform == tempTargetRender.transform)
+
+                    // posisi awal menekan mouse
+                    if (lineCount == 0)
                     {
-                        ClearColor(ref tex);
-
-
-                        if (lineCount == 0)
-                        {
-                            startTrianglePos = startDownPos;
-                        }
+                        startTrianglePos = startDownPos;
                     }
                     break;
             }
@@ -165,6 +164,30 @@ public class Painter : MonoBehaviour
                         DrawBresenhamLine(ref temporaryTexture, (int)startDownPos.x, (int)startDownPos.y, (int)pixelUV.x, (int)pixelUV.y);
                     }
                     break;
+                case DrawingMode.Triangle:
+
+                    tempTargetRender.gameObject.SetActive(true);
+
+                    if (lineCount == 0 && (startDownPos.x != pixelUV.x && startDownPos.y != pixelUV.y))
+                    {
+                        lastMouseUpPos = startDownPos;
+                        lineCount = 1;
+                    }
+
+                    ClearColor(ref temporaryTexture);
+                    DrawBresenhamLine(ref temporaryTexture, (int)startDownPos.x, (int)startDownPos.y, (int)pixelUV.x, (int)pixelUV.y);
+                    break;
+                case DrawingMode.Rectangle:
+
+                    tempTargetRender.gameObject.SetActive(true);
+
+                    ClearColor(ref temporaryTexture);
+                    DrawBresenhamLine(ref temporaryTexture, (int)startDownPos.x, (int)startDownPos.y, (int)pixelUV.x, (int)startDownPos.y);
+                    DrawBresenhamLine(ref temporaryTexture, (int)pixelUV.x, (int)startDownPos.y, (int)pixelUV.x, (int)pixelUV.y);
+                    DrawBresenhamLine(ref temporaryTexture, (int)pixelUV.x, (int)pixelUV.y, (int)startDownPos.x, (int)pixelUV.y);
+                    DrawBresenhamLine(ref temporaryTexture, (int)startDownPos.x, (int)pixelUV.y, (int)startDownPos.x, (int)startDownPos.y);
+
+                    break;
             }
         }
 
@@ -172,13 +195,13 @@ public class Painter : MonoBehaviour
         // Menerima input ketika mouse diangkat
         if (Input.GetMouseButtonUp(0))
         {
-
             switch (this.CurrentDrawingMode)
             {
                 // menggambar garis
                 case DrawingMode.Line:
                     ApplyTemporaryTex(ref temporaryTexture, ref targetTexture);
                     targetTexture.Apply();
+                    ClearColor(ref temporaryTexture);
                     break;
                 // menggambar segitiga
                 case DrawingMode.Triangle:
@@ -187,7 +210,16 @@ public class Painter : MonoBehaviour
                     // indeks titik 0, 1, dan 2
                     if (lineCount < 2)
                     {
-                        lineCount++;
+
+                        if (lineCount == 0 && (startDownPos.x != pixelUV.x && startDownPos.y != pixelUV.y))
+                        {
+                            lineCount = 1;
+                        }
+                        else
+                        {
+                            lineCount++;
+                        }
+
                     }
                     else
                     {
@@ -201,7 +233,14 @@ public class Painter : MonoBehaviour
 
                     ApplyTemporaryTex(ref temporaryTexture, ref targetTexture);
                     targetTexture.Apply();
+                    ClearColor(ref temporaryTexture);
 
+                    break;
+                // menggambar segi empat
+                case DrawingMode.Rectangle:
+                    ApplyTemporaryTex(ref temporaryTexture, ref targetTexture);
+                    targetTexture.Apply();
+                    ClearColor(ref temporaryTexture);
                     break;
             }
             lastMouseUpPos = pixelUV;
@@ -271,5 +310,24 @@ public class Painter : MonoBehaviour
             targetColors[i] = targetColors[i] * originColors[i];
         }
         targetTex.SetPixels(targetColors);
+    }
+
+    public void SetCurrentDrawingMode(string drawingMode)
+    {
+        switch (drawingMode.ToLower())
+        {
+            case "dot":
+                this.CurrentDrawingMode = DrawingMode.Dot;
+                break;
+            case "line":
+                this.CurrentDrawingMode = DrawingMode.Line;
+                break;
+            case "triangle":
+                this.CurrentDrawingMode = DrawingMode.Triangle;
+                break;
+            case "rectangle":
+                this.CurrentDrawingMode = DrawingMode.Rectangle;
+                break;
+        }
     }
 }
