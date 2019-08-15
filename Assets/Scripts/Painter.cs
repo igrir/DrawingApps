@@ -4,14 +4,17 @@ using System.Collections.Generic;
 public class Painter : MonoBehaviour
 {
 
-    const int TEXTURE_WIDTH = 100;
-    const int TEXTURE_HEIGHT = 100;
+    const int TEXTURE_WIDTH = 300;
+    const int TEXTURE_HEIGHT = 300;
 
     [Tooltip("Target bidang gambar")]
     public MeshRenderer targetRender;
 
     [Tooltip("Target bidang yang sedang digunakan")]
     public MeshRenderer tempTargetRender;
+
+    Texture2D temporaryTexture = null;
+    Texture2D targetTexture = null;
 
     // Camera utama
     Camera cam = default;
@@ -25,14 +28,20 @@ public class Painter : MonoBehaviour
 
     public enum DrawingMode
     {
-        Dot,
         Line,
         Triangle,
         Rectangle
     }
-    public DrawingMode CurrentDrawingMode = DrawingMode.Dot;
+    public DrawingMode CurrentDrawingMode = DrawingMode.Line;
 
-
+    [System.Serializable]
+    public class ShapeModel
+    {
+        public DrawingMode Mode;
+        public List<Vector2> Vertices = new List<Vector2>();
+    }
+    public List<ShapeModel> ShapeModels = new List<ShapeModel>();
+    ShapeModel currentDrawnShape;
 
     void Start()
     {
@@ -67,6 +76,8 @@ public class Painter : MonoBehaviour
         // Buat material gambar tidak terpengaruh oleh cahaya
         targetRender.material = new Material(Shader.Find("Unlit/Texture"));
         targetRender.material.mainTexture = targetTexture;
+
+        this.targetTexture = (Texture2D)targetRender.material.mainTexture;
     }
 
     void SetDefaultTemporaryTexture()
@@ -94,6 +105,8 @@ public class Painter : MonoBehaviour
         // Buat material gambar tidak terpengaruh oleh cahaya
         tempTargetRender.material = new Material(Shader.Find("Unlit/Transparent"));
         tempTargetRender.material.mainTexture = targetTexture;
+
+        this.temporaryTexture = (Texture2D)tempTargetRender.material.mainTexture;
     }
 
 
@@ -117,9 +130,6 @@ public class Painter : MonoBehaviour
 
         Texture2D tex = rend.material.mainTexture as Texture2D;
 
-        Texture2D temporaryTexture = (Texture2D)tempTargetRender.material.mainTexture;
-        Texture2D targetTexture = (Texture2D)targetRender.material.mainTexture;
-
         pixelUV.x *= tex.width;
         pixelUV.y *= tex.height;
 
@@ -131,13 +141,35 @@ public class Painter : MonoBehaviour
 
             switch (this.CurrentDrawingMode)
             {
-                case DrawingMode.Triangle:
+                case DrawingMode.Line:
+                    currentDrawnShape = new ShapeModel();
+                    currentDrawnShape.Mode = DrawingMode.Line;
+                    break;
 
+                case DrawingMode.Triangle:
                     // posisi awal menekan mouse
                     if (lineCount == 0)
                     {
+                        currentDrawnShape = new ShapeModel();
+                        currentDrawnShape.Mode = DrawingMode.Triangle;
+
                         startTrianglePos = startDownPos;
+
+                        // tambahkan data titik awal
+                        currentDrawnShape.Vertices.Add(pixelUV);
                     }
+                    break;
+
+                case DrawingMode.Rectangle:
+                    currentDrawnShape = new ShapeModel();
+                    currentDrawnShape.Mode = DrawingMode.Rectangle;
+
+                    // data titik awal gambar segi empat
+                    currentDrawnShape.Vertices.Add(new Vector2(startDownPos.x, startDownPos.y));
+                    currentDrawnShape.Vertices.Add(new Vector2(pixelUV.x, startDownPos.y));
+                    currentDrawnShape.Vertices.Add(new Vector2(pixelUV.x, pixelUV.y));
+                    currentDrawnShape.Vertices.Add(new Vector2(startDownPos.x, pixelUV.y));
+
                     break;
             }
         }
@@ -148,14 +180,7 @@ public class Painter : MonoBehaviour
 
             switch (this.CurrentDrawingMode)
             {
-                case DrawingMode.Dot:
-                    // tidak perlu menggunakan temporary target, langsung render saja di objek tujuan
-                    tempTargetRender.gameObject.SetActive(false);
-
-                    DrawDot(ref tex, (int)pixelUV.x, (int)pixelUV.y);
-                    break;
                 case DrawingMode.Line:
-
                     tempTargetRender.gameObject.SetActive(true);
 
                     if (hit.transform == tempTargetRender.transform)
@@ -165,27 +190,22 @@ public class Painter : MonoBehaviour
                     }
                     break;
                 case DrawingMode.Triangle:
-
                     tempTargetRender.gameObject.SetActive(true);
 
                     if (lineCount == 0 && (startDownPos.x != pixelUV.x && startDownPos.y != pixelUV.y))
                     {
                         lastMouseUpPos = startDownPos;
                         lineCount = 1;
+                        // tambahkan data titik baru
+                        currentDrawnShape.Vertices.Add(pixelUV);
                     }
 
-                    ClearColor(ref temporaryTexture);
-                    DrawBresenhamLine(ref temporaryTexture, (int)startDownPos.x, (int)startDownPos.y, (int)pixelUV.x, (int)pixelUV.y);
+                    if (currentDrawnShape.Vertices.Count > 0)
+                        currentDrawnShape.Vertices[currentDrawnShape.Vertices.Count - 1] = pixelUV;
+
                     break;
                 case DrawingMode.Rectangle:
-
                     tempTargetRender.gameObject.SetActive(true);
-
-                    ClearColor(ref temporaryTexture);
-                    DrawBresenhamLine(ref temporaryTexture, (int)startDownPos.x, (int)startDownPos.y, (int)pixelUV.x, (int)startDownPos.y);
-                    DrawBresenhamLine(ref temporaryTexture, (int)pixelUV.x, (int)startDownPos.y, (int)pixelUV.x, (int)pixelUV.y);
-                    DrawBresenhamLine(ref temporaryTexture, (int)pixelUV.x, (int)pixelUV.y, (int)startDownPos.x, (int)pixelUV.y);
-                    DrawBresenhamLine(ref temporaryTexture, (int)startDownPos.x, (int)pixelUV.y, (int)startDownPos.x, (int)startDownPos.y);
 
                     break;
             }
@@ -199,9 +219,14 @@ public class Painter : MonoBehaviour
             {
                 // menggambar garis
                 case DrawingMode.Line:
-                    ApplyTemporaryTex(ref temporaryTexture, ref targetTexture);
-                    targetTexture.Apply();
-                    ClearColor(ref temporaryTexture);
+
+                    currentDrawnShape.Vertices.Add(startDownPos);
+                    currentDrawnShape.Vertices.Add(pixelUV);
+                    ShapeModels.Add(currentDrawnShape);
+
+                    // reset data yang sedang digambar
+                    currentDrawnShape = null;
+
                     break;
                 // menggambar segitiga
                 case DrawingMode.Triangle:
@@ -218,57 +243,168 @@ public class Painter : MonoBehaviour
                         else
                         {
                             lineCount++;
+
+                            // tambahkan data titik baru
+                            currentDrawnShape.Vertices.Add(pixelUV);
                         }
 
                     }
                     else
                     {
-                        //garis terakhir
-                        DrawBresenhamLine(ref temporaryTexture, (int)pixelUV.x, (int)pixelUV.y, (int)startTrianglePos.x, (int)startTrianglePos.y);
+
+                        // tambahkan data gambar
+                        ShapeModels.Add(currentDrawnShape);
 
                         // reset indeks garis
                         lineCount = 0;
+
+                        // reset data yang sedang digambar
+                        currentDrawnShape = null;
                     }
-
-
-                    ApplyTemporaryTex(ref temporaryTexture, ref targetTexture);
-                    targetTexture.Apply();
-                    ClearColor(ref temporaryTexture);
 
                     break;
                 // menggambar segi empat
                 case DrawingMode.Rectangle:
-                    ApplyTemporaryTex(ref temporaryTexture, ref targetTexture);
-                    targetTexture.Apply();
-                    ClearColor(ref temporaryTexture);
+
+                    currentDrawnShape.Vertices[0] = new Vector2(startDownPos.x, startDownPos.y);
+                    currentDrawnShape.Vertices[1] = new Vector2(pixelUV.x, startDownPos.y);
+                    currentDrawnShape.Vertices[2] = new Vector2(pixelUV.x, pixelUV.y);
+                    currentDrawnShape.Vertices[3] = new Vector2(startDownPos.x, pixelUV.y);
+
+                    // tambahkan data gambar persegi
+                    ShapeModels.Add(currentDrawnShape);
+
+                    // reset data yang sedang digambar
+                    currentDrawnShape = null;
+
                     break;
             }
             lastMouseUpPos = pixelUV;
+
+            ClearColor(ref temporaryTexture);
+
+            RenderShapes(ref targetTexture);
         }
 
-        // Input ketika update
-        switch (this.CurrentDrawingMode)
+        // Preview update
+        if (currentDrawnShape != null && currentDrawnShape.Vertices.Count > 0)
         {
-            case DrawingMode.Triangle:
-                tempTargetRender.gameObject.SetActive(true);
-                if (hit.transform == tempTargetRender.transform)
+            switch (this.CurrentDrawingMode)
+            {
+                case DrawingMode.Triangle:
+                    // titik yang sedang digerakkan
+                    currentDrawnShape.Vertices[currentDrawnShape.Vertices.Count - 1] = pixelUV;
+                    break;
+                case DrawingMode.Rectangle:
+
+                    currentDrawnShape.Vertices[0] = new Vector2(startDownPos.x, startDownPos.y);
+                    currentDrawnShape.Vertices[1] = new Vector2(pixelUV.x, startDownPos.y);
+                    currentDrawnShape.Vertices[2] = new Vector2(pixelUV.x, pixelUV.y);
+                    currentDrawnShape.Vertices[3] = new Vector2(startDownPos.x, pixelUV.y);
+
+                    break;
+            }
+
+
+            // proses menggambar garis-garis preview
+            ClearColor(ref temporaryTexture);
+            for (int itVertex = 0; itVertex < currentDrawnShape.Vertices.Count - 1; itVertex++)
+            {
+                if (itVertex < currentDrawnShape.Vertices.Count - 1)
                 {
+                    Vector2 vertex1 = currentDrawnShape.Vertices[itVertex];
+                    Vector2 vertex2 = currentDrawnShape.Vertices[itVertex + 1];
 
-                    if (lineCount > 0)
-                    {
-                        ClearColor(ref temporaryTexture);
-                        DrawBresenhamLine(ref temporaryTexture, (int)lastMouseUpPos.x, (int)lastMouseUpPos.y, (int)pixelUV.x, (int)pixelUV.y);
-                    }
+                    int x1 = (int)vertex1.x;
+                    int y1 = (int)vertex1.y;
+                    int x2 = (int)vertex2.x;
+                    int y2 = (int)vertex2.y;
 
+                    // garis penghubung
+                    DrawBresenhamLine(ref temporaryTexture, x1, y1, x2, y2);
                 }
-                break;
+            }
+
+            switch (this.CurrentDrawingMode)
+            {
+                case DrawingMode.Rectangle:
+                    // garis penghubung terakhir untuk gambar segi empat
+                    Vector2 vertex1 = currentDrawnShape.Vertices[currentDrawnShape.Vertices.Count - 1];
+                    Vector2 vertex2 = currentDrawnShape.Vertices[0];
+                    int x1 = (int)vertex1.x;
+                    int y1 = (int)vertex1.y;
+                    int x2 = (int)vertex2.x;
+                    int y2 = (int)vertex2.y;
+                    DrawBresenhamLine(ref temporaryTexture, x1, y1, x2, y2);
+                    break;
+            }
         }
-
-
-
         lastPixelPosition = hit.textureCoord;
         tex.Apply();
     }
+
+    public void RenderShapes()
+    {
+        RenderShapes(ref this.targetTexture);
+    }
+
+    public void RenderShapes(ref Texture2D texture)
+    {
+        ClearColor(ref texture);
+
+        int x1, y1, x2, y2;
+        Vector2 vertex1;
+        Vector2 vertex2;
+
+        for (int i = 0; i < this.ShapeModels.Count; i++)
+        {
+            ShapeModel imageModel = this.ShapeModels[i];
+
+            switch (imageModel.Mode)
+            {
+                case DrawingMode.Line:
+                    x1 = (int)imageModel.Vertices[0].x;
+                    y1 = (int)imageModel.Vertices[0].y;
+                    x2 = (int)imageModel.Vertices[1].x;
+                    y2 = (int)imageModel.Vertices[1].y;
+                    DrawBresenhamLine(ref texture, x1, y1, x2, y2);
+                    break;
+                case DrawingMode.Rectangle:
+                case DrawingMode.Triangle:
+
+                    for (int itVertex = 0; itVertex < imageModel.Vertices.Count - 1; itVertex++)
+                    {
+                        if (itVertex < imageModel.Vertices.Count - 1)
+                        {
+                            vertex1 = imageModel.Vertices[itVertex];
+                            vertex2 = imageModel.Vertices[itVertex + 1];
+
+                            x1 = (int)vertex1.x;
+                            y1 = (int)vertex1.y;
+                            x2 = (int)vertex2.x;
+                            y2 = (int)vertex2.y;
+
+                            // garis penghubung
+                            DrawBresenhamLine(ref texture, x1, y1, x2, y2);
+                        }
+                    }
+
+                    // garis terakhir
+                    vertex1 = imageModel.Vertices[imageModel.Vertices.Count - 1];
+                    vertex2 = imageModel.Vertices[0];
+                    x1 = (int)vertex1.x;
+                    y1 = (int)vertex1.y;
+                    x2 = (int)vertex2.x;
+                    y2 = (int)vertex2.y;
+                    DrawBresenhamLine(ref texture, x1, y1, x2, y2);
+
+                    break;
+            }
+
+        }
+        texture.Apply();
+    }
+
 
     void DrawDot(ref Texture2D targetTex, int x, int y)
     {
@@ -316,9 +452,6 @@ public class Painter : MonoBehaviour
     {
         switch (drawingMode.ToLower())
         {
-            case "dot":
-                this.CurrentDrawingMode = DrawingMode.Dot;
-                break;
             case "line":
                 this.CurrentDrawingMode = DrawingMode.Line;
                 break;
