@@ -5,26 +5,16 @@ using UnityEngine;
 public class AffineTransformer : MonoBehaviour
 {
 
+    public float a;
+    public float b;
+    public float c;
+    public float d;
+
     public Painter painter;
 
-    public bool ScaleX;
-
-    // Start is called before the first frame update
-    void Start()
-    {
-
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        if (ScaleX)
-        {
-            ScaleX = false;
-            AffineTransform(1.1f, 0.1f, 0, 1, painter.ShapeModels);
-        }
-    }
-
+    // matrix:
+    // a c
+    // b d
     void AffineTransform(float a, float b, float c, float d, List<Painter.ShapeModel> shapeModels)
     {
         for (int i = 0; i < shapeModels.Count; i++)
@@ -45,6 +35,20 @@ public class AffineTransformer : MonoBehaviour
         }
 
         painter.RenderShapes();
+    }
 
+    public void ExecuteAffineTransformation(float a, float b, float c, float d)
+    {
+        this.a = a;
+        this.b = b;
+        this.c = c;
+        this.d = d;
+
+        AffineTransform(this.a, this.b, this.c, this.d, painter.ShapeModels);
+    }
+
+    public void ExecuteAffineTransformation()
+    {
+        AffineTransform(this.a, this.b, this.c, this.d, painter.ShapeModels);
     }
 }

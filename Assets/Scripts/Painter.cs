@@ -4,8 +4,8 @@ using System.Collections.Generic;
 public class Painter : MonoBehaviour
 {
 
-    const int TEXTURE_WIDTH = 300;
-    const int TEXTURE_HEIGHT = 300;
+    const int TEXTURE_WIDTH = 512;
+    const int TEXTURE_HEIGHT = 512;
 
     [Tooltip("Target bidang gambar")]
     public MeshRenderer targetRender;
@@ -40,7 +40,11 @@ public class Painter : MonoBehaviour
         public DrawingMode Mode;
         public List<Vector2> Vertices = new List<Vector2>();
     }
+
+    // data masing-masing bentuk yang digambar
     public List<ShapeModel> ShapeModels = new List<ShapeModel>();
+
+    // gambar yang sedang diolah
     ShapeModel currentDrawnShape;
 
     void Start()
@@ -220,8 +224,11 @@ public class Painter : MonoBehaviour
                 // menggambar garis
                 case DrawingMode.Line:
 
+                    // menambahkan titik awal
                     currentDrawnShape.Vertices.Add(startDownPos);
+                    // menambahkan titik akhir
                     currentDrawnShape.Vertices.Add(pixelUV);
+                    // menyimpan data gambar
                     ShapeModels.Add(currentDrawnShape);
 
                     // reset data yang sedang digambar
@@ -289,6 +296,8 @@ public class Painter : MonoBehaviour
         // Preview update
         if (currentDrawnShape != null && currentDrawnShape.Vertices.Count > 0)
         {
+            Vector2 vertex1, vertex2;
+
             switch (this.CurrentDrawingMode)
             {
                 case DrawingMode.Triangle:
@@ -305,15 +314,14 @@ public class Painter : MonoBehaviour
                     break;
             }
 
-
             // proses menggambar garis-garis preview
             ClearColor(ref temporaryTexture);
             for (int itVertex = 0; itVertex < currentDrawnShape.Vertices.Count - 1; itVertex++)
             {
                 if (itVertex < currentDrawnShape.Vertices.Count - 1)
                 {
-                    Vector2 vertex1 = currentDrawnShape.Vertices[itVertex];
-                    Vector2 vertex2 = currentDrawnShape.Vertices[itVertex + 1];
+                    vertex1 = currentDrawnShape.Vertices[itVertex];
+                    vertex2 = currentDrawnShape.Vertices[itVertex + 1];
 
                     int x1 = (int)vertex1.x;
                     int y1 = (int)vertex1.y;
@@ -329,8 +337,8 @@ public class Painter : MonoBehaviour
             {
                 case DrawingMode.Rectangle:
                     // garis penghubung terakhir untuk gambar segi empat
-                    Vector2 vertex1 = currentDrawnShape.Vertices[currentDrawnShape.Vertices.Count - 1];
-                    Vector2 vertex2 = currentDrawnShape.Vertices[0];
+                    vertex1 = currentDrawnShape.Vertices[currentDrawnShape.Vertices.Count - 1];
+                    vertex2 = currentDrawnShape.Vertices[0];
                     int x1 = (int)vertex1.x;
                     int y1 = (int)vertex1.y;
                     int x2 = (int)vertex2.x;
