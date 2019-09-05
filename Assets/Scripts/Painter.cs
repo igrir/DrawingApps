@@ -4,8 +4,8 @@ using System.Collections.Generic;
 public class Painter : MonoBehaviour
 {
 
-    const int TEXTURE_WIDTH = 512;
-    const int TEXTURE_HEIGHT = 512;
+    public const int TEXTURE_WIDTH = 512;
+    public const int TEXTURE_HEIGHT = 512;
 
     [Tooltip("Target bidang gambar")]
     public MeshRenderer targetRender;
@@ -26,6 +26,9 @@ public class Painter : MonoBehaviour
 
     int lineCount = 0;
 
+    // scan line fill
+    public ScanLineFill scanLineFill;
+
     public enum DrawingMode
     {
         Line,
@@ -45,7 +48,21 @@ public class Painter : MonoBehaviour
     public List<ShapeModel> ShapeModels = new List<ShapeModel>();
 
     // gambar yang sedang diolah
-    ShapeModel currentDrawnShape;
+    public ShapeModel currentDrawnShape;
+
+    // data sisi
+    public class Edge
+    {
+        public int x1, y1, x2, y2;
+        public Edge(int x1, int y1, int x2, int y2)
+        {
+            this.x1 = x1;
+            this.y1 = y1;
+            this.x2 = x2;
+            this.y2 = y2;
+        }
+    }
+
 
     void Start()
     {
@@ -64,7 +81,7 @@ public class Painter : MonoBehaviour
         // Setup texture yang akan digambar
         targetTexture = new Texture2D(TEXTURE_WIDTH, TEXTURE_HEIGHT);
         targetTexture.filterMode = FilterMode.Point;
-        targetTexture.wrapMode = TextureWrapMode.Clamp;
+        targetTexture.wrapMode = TextureWrapMode.Repeat;
 
         // Beri texture secara default berwarna putih
         Color[] cols = targetTexture.GetPixels();
@@ -364,9 +381,13 @@ public class Painter : MonoBehaviour
         Vector2 vertex1;
         Vector2 vertex2;
 
+        List<Edge> edges = new List<Edge>();
         for (int i = 0; i < this.ShapeModels.Count; i++)
         {
             ShapeModel imageModel = this.ShapeModels[i];
+
+            edges.Clear();
+            scanLineFill.Clear();
 
             switch (imageModel.Mode)
             {
@@ -375,7 +396,7 @@ public class Painter : MonoBehaviour
                     y1 = (int)imageModel.Vertices[0].y;
                     x2 = (int)imageModel.Vertices[1].x;
                     y2 = (int)imageModel.Vertices[1].y;
-                    DrawBresenhamLine(ref texture, x1, y1, x2, y2);
+                    edges.Add(new Edge(x1, y1, x2, y2));
                     break;
                 case DrawingMode.Rectangle:
                 case DrawingMode.Triangle:
@@ -393,7 +414,10 @@ public class Painter : MonoBehaviour
                             y2 = (int)vertex2.y;
 
                             // garis penghubung
-                            DrawBresenhamLine(ref texture, x1, y1, x2, y2);
+                            edges.Add(new Edge(x1, y1, x2, y2));
+
+                            // tambah data edge scanline
+                            scanLineFill.AddEdge(x1, y1, x2, y2);
                         }
                     }
 
@@ -404,13 +428,29 @@ public class Painter : MonoBehaviour
                     y1 = (int)vertex1.y;
                     x2 = (int)vertex2.x;
                     y2 = (int)vertex2.y;
-                    DrawBresenhamLine(ref texture, x1, y1, x2, y2);
+                    edges.Add(new Edge(x1, y1, x2, y2));
+
+                    // tambah data edge terakhir di scanline
+                    scanLineFill.AddEdge(x1, y1, x2, y2);
 
                     break;
             }
 
+
+            // proses scanline
+            this.scanLineFill.targetTex = texture;
+            scanLineFill.ProcessEdgeTable(new Color(1, 0, 0, 0.3f));
+
+            // gambar garis dari masing-masing edge
+            for (int itEdge = 0; itEdge < edges.Count; itEdge++)
+            {
+                Edge edge = edges[itEdge];
+                DrawBresenhamLine(ref texture, edge.x1, edge.y1, edge.x2, edge.y2);
+            }
+
+            texture.Apply();
         }
-        texture.Apply();
+
     }
 
 

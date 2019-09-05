@@ -422,6 +422,7 @@ GameObject:
   - component: {fileID: 225114296}
   - component: {fileID: 225114295}
   - component: {fileID: 225114297}
+  - component: {fileID: 225114298}
   m_Layer: 0
   m_Name: Painter
   m_TagString: Untagged
@@ -443,8 +444,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetRender: {fileID: 1914418028}
   tempTargetRender: {fileID: 1143046183}
-  CurrentDrawingMode: 0
+  scanLineFill: {fileID: 225114298}
+  CurrentDrawingMode: 2
   ShapeModels: []
+  currentDrawnShape:
+    Mode: 0
+    Vertices: []
 --- !u!4 &225114296
 Transform:
   m_ObjectHideFlags: 0
@@ -476,6 +481,21 @@ MonoBehaviour:
   c: 0
   d: 1
   painter: {fileID: 225114295}
+--- !u!114 &225114298
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 225114294}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43f3ebe2e42aa1f4d9445a363d5dbd79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetTex: {fileID: 0}
+  EdgeTable: []
+  ActiveList: []
 --- !u!1 &237149860
 GameObject:
   m_ObjectHideFlags: 0
