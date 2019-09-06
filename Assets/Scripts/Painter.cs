@@ -4,8 +4,8 @@ using System.Collections.Generic;
 public class Painter : MonoBehaviour
 {
 
-    public const int TEXTURE_WIDTH = 512;
-    public const int TEXTURE_HEIGHT = 512;
+    public const int TEXTURE_WIDTH = 256;
+    public const int TEXTURE_HEIGHT = 256;
 
     [Tooltip("Target bidang gambar")]
     public MeshRenderer targetRender;
@@ -439,7 +439,7 @@ public class Painter : MonoBehaviour
 
             // proses scanline
             this.scanLineFill.targetTex = texture;
-            scanLineFill.ProcessEdgeTable(new Color(1, 0, 0, 0.3f));
+            scanLineFill.ProcessEdgeTable();
 
             // gambar garis dari masing-masing edge
             for (int itEdge = 0; itEdge < edges.Count; itEdge++)

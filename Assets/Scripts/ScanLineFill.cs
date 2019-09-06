@@ -27,6 +27,8 @@ public class ScanLineFill : MonoBehaviour
     public List<EdgeBucket> EdgeTable = new List<EdgeBucket>();
     public List<EdgeBucket> ActiveList = new List<EdgeBucket>();
 
+    public Gradient gradient;
+
     // Membersihkan edge table
     public void Clear()
     {
@@ -86,7 +88,8 @@ public class ScanLineFill : MonoBehaviour
     }
 
 
-    public void ProcessEdgeTable(Color color)
+
+    public void ProcessEdgeTable()
     {
         if (EdgeTable.Count <= 0)
             return;
@@ -100,6 +103,8 @@ public class ScanLineFill : MonoBehaviour
         // untuk menentukan batas scan
         int minX = int.MaxValue;
         int maxX = int.MinValue;
+        int minY = int.MaxValue;
+        int maxY = int.MinValue;
         for (int itET = 0; itET < EdgeTable.Count; itET++)
         {
             EdgeBucket bucket = EdgeTable[itET];
@@ -115,6 +120,19 @@ public class ScanLineFill : MonoBehaviour
 
             if (bucket.xMin >= maxX)
                 maxX = bucket.xMin;
+
+            // mencari batas y
+            if (bucket.yMin <= minY)
+                minY = bucket.yMin;
+
+            if (bucket.yMax <= minY)
+                minY = bucket.yMax;
+
+            if (bucket.yMax >= maxY)
+                maxY = bucket.yMax;
+
+            if (bucket.yMin >= maxY)
+                maxY = bucket.yMin;
         }
 
         // proses scan
@@ -172,13 +190,13 @@ public class ScanLineFill : MonoBehaviour
                             Color previousColor = targetTex.GetPixel(itPair, y);
 
                             // warnai kolom di antara dua garis potong
-                            Color newColor = color.a * color + previousColor * (1f - color.a);
-                            targetTex.SetPixel(itPair, y, newColor);
+                            Color color = gradient.Evaluate(Mathf.InverseLerp(minY, maxY, y));
+                            color = color + previousColor * (1f - color.a);
+                            targetTex.SetPixel(itPair, y, color);
                         }
                         edgePair.Clear();
                     }
                 }
-
             }
 
             // lakukan proses ke baris selanjutnya
