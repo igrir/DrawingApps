@@ -4,6 +4,9 @@ using System.Collections.Generic;
 public class Painter : MonoBehaviour
 {
 
+    public Material backgroundMaterial;
+    public Material tmpDrawMaterial;
+
     public const int TEXTURE_WIDTH = 256;
     public const int TEXTURE_HEIGHT = 256;
 
@@ -95,7 +98,7 @@ public class Painter : MonoBehaviour
         targetTexture.Apply();
 
         // Buat material gambar tidak terpengaruh oleh cahaya
-        targetRender.material = new Material(Shader.Find("Unlit/Texture"));
+        targetRender.material = new Material(backgroundMaterial);
         targetRender.material.mainTexture = targetTexture;
 
         this.targetTexture = (Texture2D)targetRender.material.mainTexture;
@@ -124,7 +127,7 @@ public class Painter : MonoBehaviour
         targetTexture.Apply();
 
         // Buat material gambar tidak terpengaruh oleh cahaya
-        tempTargetRender.material = new Material(Shader.Find("Unlit/Transparent"));
+        tempTargetRender.material = new Material(this.tmpDrawMaterial);
         tempTargetRender.material.mainTexture = targetTexture;
 
         this.temporaryTexture = (Texture2D)tempTargetRender.material.mainTexture;
@@ -133,6 +136,15 @@ public class Painter : MonoBehaviour
 
     void Update()
     {
+
+        if (Input.touchCount >= 2)
+        {
+            ClearColor(ref temporaryTexture);
+            temporaryTexture.Apply();
+            currentDrawnShape = null;
+            return;
+        }
+
         RaycastHit hit;
         if (!Physics.Raycast(cam.ScreenPointToRay(Input.mousePosition), out hit))
             return;
@@ -196,7 +208,7 @@ public class Painter : MonoBehaviour
         }
 
         // Menerima input mouse sedang ditekan
-        if (Input.GetMouseButton(0))
+        if (Input.GetMouseButton(0) && currentDrawnShape != null)
         {
 
             switch (this.CurrentDrawingMode)
@@ -234,7 +246,7 @@ public class Painter : MonoBehaviour
 
 
         // Menerima input ketika mouse diangkat
-        if (Input.GetMouseButtonUp(0))
+        if (Input.GetMouseButtonUp(0) && currentDrawnShape != null)
         {
             switch (this.CurrentDrawingMode)
             {
