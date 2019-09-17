@@ -137,13 +137,21 @@ public class Painter : MonoBehaviour
     void Update()
     {
 
+        // membatalkan proses penggambaran saat proses panning/zooming
         if (Input.touchCount >= 2)
         {
-            ClearColor(ref temporaryTexture);
-            temporaryTexture.Apply();
-            currentDrawnShape = null;
+            // membersihkan tampilan temporary
+            ClearColor(ref this.temporaryTexture);
+            this.temporaryTexture.Apply();
+
+            // reset garis poligon yang sedang dibuat
+            this.lineCount = 0;
+
+            // reset bentuk yang sedang digambar
+            this.currentDrawnShape = null;
             return;
         }
+
 
         RaycastHit hit;
         if (!Physics.Raycast(cam.ScreenPointToRay(Input.mousePosition), out hit))
@@ -208,7 +216,7 @@ public class Painter : MonoBehaviour
         }
 
         // Menerima input mouse sedang ditekan
-        if (Input.GetMouseButton(0) && currentDrawnShape != null)
+        if (Input.GetMouseButton(0))
         {
 
             switch (this.CurrentDrawingMode)
@@ -263,6 +271,7 @@ public class Painter : MonoBehaviour
                     // reset data yang sedang digambar
                     currentDrawnShape = null;
 
+
                     break;
                 // menggambar segitiga
                 case DrawingMode.Triangle:
@@ -290,6 +299,7 @@ public class Painter : MonoBehaviour
 
                         // tambahkan data gambar
                         ShapeModels.Add(currentDrawnShape);
+
 
                         // reset indeks garis
                         lineCount = 0;
